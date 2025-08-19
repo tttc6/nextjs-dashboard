@@ -74,7 +74,7 @@ export async function fetchCardData() {
       where: {
         status: 'paid',
       },
-    }).then(async (paidResult) => {
+    }).then(async (paidResult: Awaited<ReturnType<typeof prisma.invoice.aggregate>>) => {
       const pendingResult = await prisma.invoice.aggregate({
         _sum: {
           amount: true,
@@ -84,8 +84,8 @@ export async function fetchCardData() {
         },
       });
       return {
-        paid: paidResult._sum.amount ?? 0,
-        pending: pendingResult._sum.amount ?? 0,
+        paid: paidResult._sum?.amount ?? 0,
+        pending: pendingResult._sum?.amount ?? 0,
       };
     });
 
