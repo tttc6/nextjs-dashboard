@@ -46,7 +46,7 @@ export async function fetchLatestInvoices() {
       },
     });
 
-    const latestInvoices = data.map((invoice) => ({
+    const latestInvoices = data.map((invoice: typeof data[0]) => ({
       id: invoice.id,
       amount: formatCurrency(invoice.amount),
       name: invoice.customer.name,

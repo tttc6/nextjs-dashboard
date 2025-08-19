@@ -10,9 +10,10 @@ import { AuthError } from 'next-auth';
 export async function authenticate(
   prevState: string | undefined,
   formData: FormData,
-) {
+): Promise<string | undefined> {
   try {
     await signIn('credentials', formData);
+    return undefined;
   } catch (error) {
     if (error instanceof AuthError) {
       switch (error.type) {
@@ -70,7 +71,7 @@ export async function createInvoice(prevState: State, formData: FormData) {
  
   const { customerId, amount, status } = validatedFields.data;
   const amountInCents = amount * 100;
-  const date = new Date().toISOString().split('T')[0];
+  const dateString = new Date().toISOString().split('T')[0] as string;
  
   try {
     await prisma.invoice.create({
@@ -78,7 +79,7 @@ export async function createInvoice(prevState: State, formData: FormData) {
         customerId,
         amount: amountInCents,
         status,
-        date: new Date(date),
+        date: new Date(dateString),
       },
     });
   } catch (error) {
