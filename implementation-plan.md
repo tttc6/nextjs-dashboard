@@ -3,19 +3,21 @@
 
 ## Overview
 
-This plan converts the existing Next.js dashboard POC from raw SQL queries to Prisma ORM, while adding database branching capabilities and a CLI management tool. The work is structured for Claude Code execution with clear, incremental steps.
+This plan converts the existing Next.js dashboard POC from raw SQL queries to Prisma ORM and adds a CLI management tool. The work is structured for Claude Code execution with clear, incremental steps.
+
+**Key Simplification**: Uses existing Vercel environment variable management instead of custom environment configuration.
 
 ## Prerequisites
 
 - Current POC has all SQL in `app/lib/data.ts`
 - Schema types defined in `app/lib/definitions.ts`
-- Single Neon database instance
+- Vercel deployment with Neon database branches already mapped to environments
 - No real users (safe for big-bang migration)
 
 ## Phase 1: Database Branching Setup
 *Goal: Create separate dev/staging environments*
 
-### Task 1.1: Create Database Branches (Manual)
+### Task 1.1: Create Database Branches (Manual) ✅ COMPLETED
 **Duration**: 15 minutes  
 **Tool**: Neon Web Console
 
@@ -23,35 +25,12 @@ This plan converts the existing Next.js dashboard POC from raw SQL queries to Pr
 1. Log into Neon console
 2. Create branch `staging` from `main`
 3. Create branch `dev` from `main`
-4. Document connection strings for each environment
+4. Map branches to Vercel deployment environments
 
-**Deliverable**: Three database environments with connection strings
+**Deliverable**: Three database environments with Vercel integration
 
-### Task 1.2: Environment Configuration
-**Duration**: 30 minutes  
-**Claude Code Prompt**:
-
-```
-Set up environment-specific database configuration for a Next.js app. 
-
-Current setup:
-- Single DATABASE_URL in .env.local
-- Need to support dev/staging/production environments
-
-Requirements:
-1. Create environment configuration system
-2. Add new env vars for each database branch
-3. Update any existing database connection code to use environment-aware URLs
-4. Create .env.example with all required variables
-
-Files to modify/create:
-- .env.local (add new DATABASE_URLs)
-- .env.example 
-- app/lib/config.ts (new file for environment management)
-- Any existing database connection code
-
-Make sure the default behavior uses the existing DATABASE_URL for backward compatibility.
-```
+### ~~Task 1.2: Environment Configuration~~ ❌ REMOVED
+**Reason**: Vercel already handles environment variable mapping via Neon branch integration. No custom environment configuration needed.
 
 ## Phase 2: Prisma Setup and Schema Generation
 *Goal: Set up Prisma and generate schema from existing TypeScript definitions*
@@ -136,7 +115,7 @@ Create a shared Prisma database client for the application.
 
 Requirements:
 1. Create app/lib/db.ts that exports a configured Prisma client
-2. Add proper connection configuration for different environments
+2. Use process.env.POSTGRES_URL (same as current Next.js app)
 3. Add appropriate logging for development
 4. Handle connection errors gracefully
 5. Export common types from @prisma/client
@@ -245,18 +224,19 @@ Initial CLI should just show help and version, no actual functionality yet.
 Implement the database reset command for the CLI.
 
 Requirements:
-1. Create reset command that can target dev/staging (never production)
-2. Add safety confirmations
+1. Create reset command that uses process.env.POSTGRES_URL (same as Next.js app)
+2. Add safety confirmations (never allow on production URLs)
 3. Implement the reset logic:
-   - Connect to target environment database
+   - Connect to database using environment variable
    - Clear all data in correct order (respecting foreign keys)
    - Optionally reseed with baseline data
 4. Add proper error handling and user feedback
 
-Command usage: `db-manager reset dev`
+Command usage: 
+- `db-manager reset` (uses local .env)
+- `POSTGRES_URL=<url> db-manager reset` (explicit override)
 
-Use the Prisma client from the main app to ensure consistency.
-Make sure it connects to the correct environment database.
+Use the Prisma client with same connection pattern as main app.
 ```
 
 ### Task 4.3: Migration Command
@@ -267,35 +247,37 @@ Make sure it connects to the correct environment database.
 Add database migration command to the CLI.
 
 Requirements:
-1. Command to run Prisma migrations on specific environments
+1. Command to run Prisma migrations using process.env.POSTGRES_URL
 2. Support for --dry-run flag to preview changes
 3. Migration status checking
 4. Proper error handling for failed migrations
 
 Command usage: 
-- `db-manager migrate dev`
-- `db-manager migrate staging --dry-run`
+- `db-manager migrate` (uses local .env)
+- `POSTGRES_URL=<url> db-manager migrate --dry-run` (explicit override)
 
 This should use Prisma's migration system under the hood.
 ```
 
-### Task 4.4: Environment Management Commands
+### Task 4.4: Status and Management Commands
 **Duration**: 30 minutes  
 **Claude Code Prompt**:
 
 ```
-Add environment and status commands to the CLI.
+Add status and management commands to the CLI.
 
 Commands to implement:
-1. `db-manager status` - Show status of all environments
-2. `db-manager env list` - List available environments
-3. `db-manager env switch <env>` - Switch local development to different environment
+1. `db-manager status` - Show current database status
 
 Each command should:
-- Show database connection status
+- Show database connection status using process.env.POSTGRES_URL
 - Display recent migration history
 - Show basic metrics (table counts, etc.)
 - Use colored output for better UX
+
+Usage examples:
+- `db-manager status` (uses local .env)
+- `POSTGRES_URL=<url> db-manager status` (explicit override)
 
 Add these commands to the existing CLI structure.
 ```
@@ -344,24 +326,23 @@ Document any issues and fix them.
 Create a simple README for the CLI tool with usage examples.
 ```
 
-### Task 5.3: Environment Switching Test
+### Task 5.3: Environment Integration Test
 **Duration**: 15 minutes  
 **Claude Code Prompt**:
 
 ```
-Test environment switching functionality.
+Test CLI integration with existing Vercel environment setup.
 
 Test plan:
-1. Switch local app to dev database
-2. Verify it connects to the correct database
-3. Switch to staging database
-4. Confirm data isolation between environments
-5. Document the process for switching environments
+1. Test CLI works with local .env file (same as Next.js)
+2. Test explicit POSTGRES_URL override functionality
+3. Verify data isolation between different database connections
+4. Confirm integration with Vercel deployment workflow
 
 Create documentation for:
-- How to switch between environments
-- How to set up new environments
-- Best practices for environment management
+- How to use CLI with different database environments
+- Integration with Vercel deployment process
+- Best practices for database management
 ```
 
 ## Phase 6: Documentation and Cleanup
@@ -407,13 +388,12 @@ Goal: Leave the codebase in a clean, maintainable state.
 
 ## Summary
 
-**Total Estimated Duration**: ~7-8 hours of focused work
+**Total Estimated Duration**: ~6-7 hours of focused work (reduced by removing environment config complexity)
 
 **Key Deliverables**:
-- Multi-environment database setup (dev/staging/prod)
 - Complete migration from raw SQL to Prisma
-- Database management CLI tool
-- Comprehensive documentation
+- Database management CLI tool that works with existing Vercel setup
+- Documentation for Prisma workflow
 
 **Risk Mitigation**:
 - Each phase builds incrementally
@@ -421,11 +401,17 @@ Goal: Leave the codebase in a clean, maintainable state.
 - CLI provides easy rollback via database reset
 - Extensive testing phase ensures functionality preservation
 
+**Simplified Architecture**:
+- CLI and Next.js app both use `process.env.POSTGRES_URL`
+- No custom environment switching logic
+- Perfect integration with existing Vercel/Neon branch setup
+- Flexible CLI usage via environment variable override
+
 **Success Criteria**:
 - Application functions identically to before
-- Database operations are more maintainable
-- Easy environment management via CLI
-- Clear documentation for future development
+- Database operations are more maintainable via Prisma
+- CLI provides database management without environment complexity
+- Seamless integration with existing deployment workflow
 
 ## Post-Implementation
 
