@@ -167,7 +167,7 @@ export async function fetchFilteredInvoices(
     });
 
     // Transform to match expected structure
-    const transformedInvoices = invoices.map((invoice) => ({
+    const transformedInvoices = invoices.map((invoice: typeof invoices[0]) => ({
       id: invoice.id,
       amount: invoice.amount,
       date: invoice.date.toISOString().split('T')[0], // Format as YYYY-MM-DD
