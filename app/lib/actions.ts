@@ -1,7 +1,9 @@
 'use server';
  
 import { z } from 'zod';
-import postgres from 'postgres';
+import db from './db';
+import { invoices } from './schema';
+import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { signIn } from '@/auth';
@@ -10,9 +12,10 @@ import { AuthError } from 'next-auth';
 export async function authenticate(
   prevState: string | undefined,
   formData: FormData,
-) {
+): Promise<string | undefined> {
   try {
     await signIn('credentials', formData);
+    return undefined;
   } catch (error) {
     if (error instanceof AuthError) {
       switch (error.type) {
@@ -26,7 +29,7 @@ export async function authenticate(
   }
 }
  
-const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
+// Server actions for invoice management using Prisma
  
 const FormSchema = z.object({
   id: z.string(),
@@ -70,14 +73,16 @@ export async function createInvoice(prevState: State, formData: FormData) {
  
   const { customerId, amount, status } = validatedFields.data;
   const amountInCents = amount * 100;
-  const date = new Date().toISOString().split('T')[0];
+  const dateString = new Date().toISOString().split('T')[0] as string;
  
   try {
-    await sql`
-      INSERT INTO invoices (customer_id, amount, status, date)
-      VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
-    `;
-  } catch (error) {
+    await db.insert(invoices).values({
+      customerId,
+      amount: amountInCents,
+      status,
+      date: dateString,
+    });
+  } catch {
     return {
       message: 'Database Error: Failed to Create Invoice.',
     };
@@ -109,12 +114,15 @@ export async function updateInvoice(
   const amountInCents = amount * 100;
  
   try {
-    await sql`
-      UPDATE invoices
-      SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
-      WHERE id = ${id}
-    `;
-  } catch (error) {
+    await db
+      .update(invoices)
+      .set({
+        customerId,
+        amount: amountInCents,
+        status,
+      })
+      .where(eq(invoices.id, id));
+  } catch {
     return { message: 'Database Error: Failed to Update Invoice.' };
   }
  
@@ -123,6 +131,10 @@ export async function updateInvoice(
 }
 
 export async function deleteInvoice(id: string) {
-  await sql`DELETE FROM invoices WHERE id = ${id}`;
-  revalidatePath('/dashboard/invoices');
+  try {
+    await db.delete(invoices).where(eq(invoices.id, id));
+    revalidatePath('/dashboard/invoices');
+  } catch {
+    throw new Error('Database Error: Failed to Delete Invoice.');
+  }
 }

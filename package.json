@@ -1,26 +1,36 @@
 {
   "private": true,
   "scripts": {
-    "build": "next build",
+    "build": "drizzle-kit migrate && next build",
     "dev": "next dev --turbopack",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "db:pull": "drizzle-kit pull",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
+    "@neondatabase/serverless": "^1.0.1",
     "@tailwindcss/forms": "^0.5.10",
+    "@vercel/analytics": "^1.5.0",
+    "@vercel/speed-insights": "^1.2.0",
     "autoprefixer": "10.4.20",
     "bcrypt": "^5.1.1",
     "clsx": "^2.1.1",
+    "drizzle-orm": "^0.44.4",
     "next": "latest",
     "next-auth": "5.0.0-beta.29",
     "postcss": "8.5.1",
-    "postgres": "^3.4.6",
     "react": "latest",
     "react-dom": "latest",
     "tailwindcss": "3.4.17",
     "typescript": "5.7.3",
     "use-debounce": "^10.0.4",
+    "ws": "^8.18.3",
     "zod": "^3.25.17"
   },
   "devDependencies": {
@@ -28,13 +38,23 @@
     "@types/node": "22.10.7",
     "@types/react": "19.0.7",
     "@types/react-dom": "19.0.3",
+    "@types/ws": "^8.18.1",
+    "drizzle-kit": "^0.31.4",
     "eslint": "^9.33.0",
     "eslint-config-next": "15.4.6"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@vercel/speed-insights",
       "bcrypt",
-      "sharp"
+      "esbuild",
+      "sharp",
+      "unrs-resolver"
+    ],
+    "ignoredBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma"
     ]
   }
 }
