@@ -4,14 +4,14 @@ import { authConfig } from './auth.config';
 import { z } from 'zod';
 import type { User } from '@/app/lib/definitions';
 import bcrypt from 'bcrypt';
-import prisma from '@/app/lib/db';
+import db from '@/app/lib/db';
+import { users } from '@/app/lib/schema';
+import { eq } from 'drizzle-orm';
  
 async function getUser(email: string): Promise<User | undefined> {
   try {
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
-    return user || undefined;
+    const userResult = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    return userResult.length > 0 ? userResult[0] : undefined;
   } catch (error) {
     console.error('Failed to fetch user:', error);
     throw new Error('Failed to fetch user.');

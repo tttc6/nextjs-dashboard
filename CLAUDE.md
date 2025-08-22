@@ -78,5 +78,7 @@ No test framework is currently configured. If adding tests, check if there are e
 
 ## Documentation
 - Check the `docs/` directory for additional reference materials, best practices, and architectural guidance when needed
+
+## Memories
 - We use pnpm on this project!
 - `prisma db pull` will overwrite your schema. Back it up or write to another file with `prisma db pull --print > temp.prisma` for comparison.

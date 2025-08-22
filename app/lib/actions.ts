@@ -1,7 +1,9 @@
 'use server';
  
 import { z } from 'zod';
-import prisma from './db';
+import db from './db';
+import { invoices } from './schema';
+import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { signIn } from '@/auth';
@@ -74,15 +76,13 @@ export async function createInvoice(prevState: State, formData: FormData) {
   const dateString = new Date().toISOString().split('T')[0] as string;
  
   try {
-    await prisma.invoice.create({
-      data: {
-        customerId,
-        amount: amountInCents,
-        status,
-        date: new Date(dateString),
-      },
+    await db.insert(invoices).values({
+      customerId,
+      amount: amountInCents,
+      status,
+      date: dateString,
     });
-  } catch (error) {
+  } catch {
     return {
       message: 'Database Error: Failed to Create Invoice.',
     };
@@ -114,15 +114,15 @@ export async function updateInvoice(
   const amountInCents = amount * 100;
  
   try {
-    await prisma.invoice.update({
-      where: { id },
-      data: {
+    await db
+      .update(invoices)
+      .set({
         customerId,
         amount: amountInCents,
         status,
-      },
-    });
-  } catch (error) {
+      })
+      .where(eq(invoices.id, id));
+  } catch {
     return { message: 'Database Error: Failed to Update Invoice.' };
   }
  
@@ -132,11 +132,9 @@ export async function updateInvoice(
 
 export async function deleteInvoice(id: string) {
   try {
-    await prisma.invoice.delete({
-      where: { id },
-    });
+    await db.delete(invoices).where(eq(invoices.id, id));
     revalidatePath('/dashboard/invoices');
-  } catch (error) {
+  } catch {
     throw new Error('Database Error: Failed to Delete Invoice.');
   }
 }

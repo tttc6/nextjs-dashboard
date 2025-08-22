@@ -1,5 +1,7 @@
 import bcrypt from 'bcrypt';
-import prisma from './db';
+import db from './db';
+import { users as usersTable, customers as customersTable, invoices as invoicesTable, revenue as revenueTable } from './schema';
+import { eq, count } from 'drizzle-orm';
 import { invoices, customers, revenue, users } from './placeholder-data';
 
 export async function seedUsers() {
@@ -8,16 +10,19 @@ export async function seedUsers() {
   const insertedUsers = await Promise.all(
     users.map(async (user) => {
       const hashedPassword = await bcrypt.hash(user.password, 10);
-      return prisma.user.upsert({
-        where: { id: user.id },
-        update: {},
-        create: {
+      
+      // Check if user exists
+      const existingUser = await db.select().from(usersTable).where(eq(usersTable.id, user.id)).limit(1);
+      
+      if (existingUser.length === 0) {
+        return await db.insert(usersTable).values({
           id: user.id,
           name: user.name,
           email: user.email,
           password: hashedPassword,
-        },
-      });
+        }).returning();
+      }
+      return existingUser[0];
     })
   );
 
@@ -29,18 +34,20 @@ export async function seedCustomers() {
   console.log('🌱 Seeding customers...');
   
   const insertedCustomers = await Promise.all(
-    customers.map((customer) =>
-      prisma.customer.upsert({
-        where: { id: customer.id },
-        update: {},
-        create: {
+    customers.map(async (customer) => {
+      // Check if customer exists
+      const existingCustomer = await db.select().from(customersTable).where(eq(customersTable.id, customer.id)).limit(1);
+      
+      if (existingCustomer.length === 0) {
+        return await db.insert(customersTable).values({
           id: customer.id,
           name: customer.name,
           email: customer.email,
           imageUrl: customer.image_url,
-        },
-      })
-    )
+        }).returning();
+      }
+      return existingCustomer[0];
+    })
   );
 
   console.log(`✅ Seeded ${insertedCustomers.length} customers`);
@@ -51,24 +58,23 @@ export async function seedInvoices() {
   console.log('🌱 Seeding invoices...');
   
   // Check if invoices already exist to avoid duplicates
-  const existingInvoices = await prisma.invoice.count();
+  const existingInvoicesCount = await db.select({ count: count() }).from(invoicesTable);
   
-  if (existingInvoices > 0) {
-    console.log(`ℹ️  Found ${existingInvoices} existing invoices, skipping seeding`);
+  if (existingInvoicesCount[0].count > 0) {
+    console.log(`ℹ️  Found ${existingInvoicesCount[0].count} existing invoices, skipping seeding`);
     return [];
   }
   
-  const insertedInvoices = await prisma.invoice.createMany({
-    data: invoices.map((invoice) => ({
+  const insertedInvoices = await db.insert(invoicesTable).values(
+    invoices.map((invoice) => ({
       customerId: invoice.customer_id,
       amount: invoice.amount,
       status: invoice.status,
-      date: new Date(invoice.date),
-    })),
-    skipDuplicates: true,
-  });
+      date: invoice.date,
+    }))
+  ).returning();
 
-  console.log(`✅ Seeded ${insertedInvoices.count} invoices`);
+  console.log(`✅ Seeded ${insertedInvoices.length} invoices`);
   return insertedInvoices;
 }
 
@@ -76,16 +82,18 @@ export async function seedRevenue() {
   console.log('🌱 Seeding revenue...');
   
   const insertedRevenue = await Promise.all(
-    revenue.map((rev) =>
-      prisma.revenue.upsert({
-        where: { month: rev.month },
-        update: {},
-        create: {
+    revenue.map(async (rev) => {
+      // Check if revenue record exists
+      const existingRevenue = await db.select().from(revenueTable).where(eq(revenueTable.month, rev.month)).limit(1);
+      
+      if (existingRevenue.length === 0) {
+        return await db.insert(revenueTable).values({
           month: rev.month,
           revenue: rev.revenue,
-        },
-      })
-    )
+        }).returning();
+      }
+      return existingRevenue[0];
+    })
   );
 
   console.log(`✅ Seeded ${insertedRevenue.length} revenue records`);

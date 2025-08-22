@@ -1,40 +1,42 @@
-import { PrismaClient } from '@prisma/client';
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+import { neonConfig } from '@neondatabase/serverless';
+import ws from 'ws';
+import * as schema from './schema';
+
+// Configure WebSocket constructor for Node.js environments
+if (typeof global !== 'undefined') {
+  neonConfig.webSocketConstructor = ws;
+}
 
 declare global {
   // eslint-disable-next-line no-var
-  var prisma: PrismaClient | undefined;
+  var db: ReturnType<typeof drizzle> | undefined;
 }
 
-// Create Prisma client with environment-aware configuration
-const createPrismaClient = () => {
-  return new PrismaClient({
-    log: process.env.NODE_ENV === 'development' 
-      ? ['query', 'info', 'warn', 'error'] 
-      : ['error'],
-    errorFormat: 'pretty',
-  });
+// Create database connection
+const createDbConnection = () => {
+  const sql = neon(process.env.POSTGRES_URL!);
+  return drizzle(sql, { schema });
 };
 
-// Use singleton pattern to avoid multiple instances
-const prisma = globalThis.prisma ?? createPrismaClient();
+// Use singleton pattern to avoid multiple connections in development
+const db = globalThis.db ?? createDbConnection();
 
 if (process.env.NODE_ENV !== 'production') {
-  globalThis.prisma = prisma;
+  globalThis.db = db;
 }
 
-// Graceful shutdown handling
-process.on('beforeExit', async () => {
-  await prisma.$disconnect();
-});
+export default db;
 
-// Export the configured Prisma client as default
-export default prisma;
-
-// Export common types for convenience
+// Export types for convenience
 export type {
   User,
   Customer,
   Invoice,
   Revenue,
-  Prisma,
-} from '@prisma/client';
+  NewUser,
+  NewCustomer, 
+  NewInvoice,
+  NewRevenue,
+} from './schema';
