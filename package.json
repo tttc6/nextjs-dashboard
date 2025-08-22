@@ -1,14 +1,15 @@
 {
   "private": true,
   "scripts": {
-    "build": "next build",
+    "build": "drizzle-kit migrate && next build",
     "dev": "next dev --turbopack",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "db:generate": "drizzle-kit generate",
+    "db:pull": "drizzle-kit pull",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
